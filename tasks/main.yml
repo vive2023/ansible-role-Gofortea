@@ -1,0 +1,68 @@
+---
+# tasks file for patching
+- name: OS PATCHING
+  hosts: all
+  vars_files:
+    - input.yml
+  tasks:
+    - name: Reboot the machine rhel
+      shell: "sleep 10 && reboot"
+      async: 10
+      poll: 0
+      ignore_errors: true
+
+    - name: Wait for the machine to come back online
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        state: started
+        delay: 180
+        timeout: 600
+        port: 22
+      delegate_to: localhost
+
+    - name: os patching on  RHEL 6&7
+      yum:
+        name: "*"
+        state: latest
+        skip_broken: yes
+        exclude: "{{ excluded_package }}"
+      become: yes
+      when: >
+        ((ansible_facts['distribution'] == "RedHat"
+        and ansible_facts['distribution_major_version'] == "6")
+        or
+        (ansible_facts['distribution'] == "RedHat"
+        and ansible_facts['distribution_major_version'] == "7")
+        or
+        (ansible_facts['distribution'] == "RedHat"
+        and ansible_facts['distribution_major_version'] == "8"))
+      register: installedstate
+    - debug:
+        var: installedstate
+    - name: os patching on RHEL8
+      dnf:
+        name: "*"
+        state: latest
+        skip_broken: yes
+        exclude: "{{ excluded_package }}"
+      become: yes
+      when: >
+        (ansible_facts['distribution'] == "RedHat"
+        and ansible_facts['distribution_major_version'] == "8")
+      register: installedstate1
+    - debug:
+        var: installedstate1
+    - name: Reboot the machine
+      shell: "sleep 10 && reboot"
+      async: 10
+      poll: 0
+      ignore_errors: true
+
+    - name: Wait for the machine to come back online
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        state: started
+        delay: 180
+        timeout: 600
+        port: 22
+      delegate_to: localhost
